@@ -25,7 +25,7 @@ struct ContentView: View {
             ZStack {
                 // BACKGROUND
                 LinearGradient(colors: [.black, .gray], startPoint: .top, endPoint: .bottom)
-                    .ignoresSafeArea()
+                    .ignoresSafeArea(edges: .bottom)
 
                 VStack(alignment: .leading, spacing: 12) {
 
@@ -39,7 +39,10 @@ struct ContentView: View {
                         ScrollView {
                             LazyVGrid(columns: gridCols, spacing: 14) {
                                 ForEach(viewModel.searchResults) { item in
-                                    SearchResultCard(item: item, posterBuilder: viewModel.posterURL)
+                                    NavigationLink(destination: MovieDetailView(movieId: item.id)) {
+                                        SearchResultCard(item: item, posterBuilder: viewModel.posterURL)
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
                                 }
                             }
                             .padding(.horizontal)
@@ -57,7 +60,10 @@ struct ContentView: View {
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: 12) {
                                     ForEach(viewModel.trending) { item in
-                                        TrendingCard(trendingItem: item)
+                                        NavigationLink(destination: MovieDetailView(movieId: item.id)) {
+                                            TrendingCard(trendingItem: item)
+                                        }
+                                        .buttonStyle(PlainButtonStyle())
                                     }
                                 }
                                 .padding(.horizontal)
@@ -70,14 +76,15 @@ struct ContentView: View {
                 .foregroundStyle(.white)
             }
             .navigationTitle("Movie Night")
+            .navigationBarTitleDisplayMode(.large)
+            .preferredColorScheme(.dark)
+            .searchable(text: $query,
+                       placement: .navigationBarDrawer(displayMode: .always),
+                       prompt: "Search movies")
+            .toolbarBackground(.black.opacity(0.9), for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
         }
         .task { await viewModel.loadTrending() }
-
-        // SEARCHABLE HOOK
-        .searchable(text: $query,
-                    placement: .navigationBarDrawer(displayMode: .automatic),
-                    prompt: "Search movies")
-
         .onChange(of: query) { _, newValue in
             searchTask?.cancel()
             searchTask = Task { @MainActor in

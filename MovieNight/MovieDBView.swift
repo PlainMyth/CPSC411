@@ -87,4 +87,25 @@ class MovieNightViewModel: ObservableObject {
         guard let path = path else { return nil }
         return URL(string: "https://image.tmdb.org/t/p/\(size)\(path)")
     }
+    
+    // Fetch movie details
+    func fetchMovieDetails(movieId: Int) async -> MovieDetail? {
+        guard let url = URL(string: "https://api.themoviedb.org/3/movie/\(movieId)") else { return nil }
+        let request = makeRequest(url: url)
+        
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+                print("Movie details bad status: \((response as? HTTPURLResponse)?.statusCode ?? -1)")
+                print(String(data: data, encoding: .utf8) ?? "")
+                return nil
+            }
+            
+            let decoded = try JSONDecoder().decode(MovieDetail.self, from: data)
+            return decoded
+        } catch {
+            print("Movie details fetch/decode error:", error)
+            return nil
+        }
+    }
 }
