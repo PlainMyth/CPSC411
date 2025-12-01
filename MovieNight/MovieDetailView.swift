@@ -14,6 +14,8 @@ struct MovieDetailView: View {
     @State private var isLoading = true
     @Environment(\.dismiss) private var dismiss
     
+    @ObservedObject var favorites = FavoritesManager.shared
+    
     var body: some View {
         ZStack {
             // BACKGROUND
@@ -67,10 +69,18 @@ struct MovieDetailView: View {
                         VStack(alignment: .leading, spacing: 16) {
                             // Title and Rating
                             VStack(alignment: .leading, spacing: 8) {
-                                Text(detail.title ?? "Untitled")
-                                    .font(.largeTitle)
-                                    .fontWeight(.bold)
-                                    .foregroundStyle(.white)
+                                HStack(spacing: 6) {
+                                    Text(detail.title ?? "Untitled")
+                                        .font(.largeTitle)
+                                        .fontWeight(.bold)
+                                        .foregroundStyle(.white)
+                                    
+                                    if let date = detail.release_date, date.count >= 4 {
+                                        Text(" ("+String(date.prefix(4))+")") // Takes "2023-12-25" and keeps "2023"
+                                            .font(.title)
+                                            .foregroundStyle(.white)
+                                }
+                                }
                                 
                                 if let voteAverage = detail.vote_average {
                                     HStack(spacing: 6) {
@@ -79,6 +89,13 @@ struct MovieDetailView: View {
                                         Text(String(format: "%.1f", voteAverage))
                                             .font(.headline)
                                             .foregroundStyle(.white)
+                                        
+                                        if let count = detail.vote_count {
+                                                    Text("(\(count) reviews)")
+                                                        .font(.subheadline)
+                                                        .foregroundStyle(.white)
+                                                        .padding(.leading, 4)
+                                                }
                                     }
                                 }
                             }
@@ -126,6 +143,28 @@ struct MovieDetailView: View {
             }
         }
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        if let detail = movieDetail {
+                            // We need to convert MovieDetail back to TrendingItem to save it
+                            let item = TrendingItem(
+                                adult: false, // Default
+                                id: detail.id,
+                                poster_path: detail.poster_path,
+                                title: detail.title,
+                                vote_average: detail.vote_average ?? 0.0
+                            )
+                            
+                            Button {
+                                favorites.toggle(item)
+                            } label: {
+                                Image(systemName: favorites.favorites.contains(where: { $0.id == item.id }) ? "heart.fill" : "heart")
+                                        .foregroundStyle(.red)
+                                        .contentTransition(.symbolEffect(.replace))
+                            }
+                        }
+                    }
+                }
         .task {
             movieDetail = await viewModel.fetchMovieDetails(movieId: movieId)
             isLoading = false
@@ -160,6 +199,8 @@ struct GenreFlowView: View {
         var currentRow: [Genre] = []
         var currentWidth: CGFloat = 0
         let screenWidth = UIScreen.main.bounds.width - 64 // Account for padding
+        
+        
         
         for genre in genres {
             let estimatedWidth = CGFloat(genre.name.count) * 8 + 32 // Rough estimate based on text length
